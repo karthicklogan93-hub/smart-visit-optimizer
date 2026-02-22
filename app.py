@@ -210,5 +210,3 @@ if st.button("Generate Optimized Schedule"):
         server.quit()
 
         st.success("Email Sent Successfully!")
-
-!streamlit run app.py
