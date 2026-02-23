@@ -10,29 +10,33 @@ Original file is located at
 import streamlit as st
 from geopy.distance import geodesic
 import datetime
+import urllib.parse
+import smtplib
+from email.mime.text import MIMEText
 
-st.title("Smart Client Visit Optimizer")
-
-st.write("Enter doctor start location and client details below.")
+st.title("🚑 Smart Patient Visit Optimizer")
 
 # Doctor start location
-start_lat = st.number_input("Doctor Start Latitude", value=9.9200)
-start_lon = st.number_input("Doctor Start Longitude", value=78.1200)
+st.header("Doctor Start Location")
+start_lat = st.number_input("Start Latitude", value=9.9200)
+start_lon = st.number_input("Start Longitude", value=78.1200)
 
-# Number of clients
-num_clients = st.number_input("Number of Clients", min_value=1, step=1)
+# Add patients
+st.header("Add Patients")
 
-clients = []
+num_patients = st.number_input("Number of Patients", min_value=1, step=1)
 
-for i in range(int(num_clients)):
-    st.subheader(f"Client {i+1}")
-    name = st.text_input(f"Client Name {i}", key=f"name{i}")
+patients = []
+
+for i in range(int(num_patients)):
+    st.subheader(f"Patient {i+1}")
+    name = st.text_input(f"Name {i}", key=f"name{i}")
     lat = st.number_input(f"Latitude {i}", key=f"lat{i}")
     lon = st.number_input(f"Longitude {i}", key=f"lon{i}")
-    available_from = st.number_input(f"Available From (24h format)", key=f"from{i}")
-    available_to = st.number_input(f"Available To (24h format)", key=f"to{i}")
+    available_from = st.number_input(f"Available From (24h)", key=f"from{i}")
+    available_to = st.number_input(f"Available To (24h)", key=f"to{i}")
 
-    clients.append({
+    patients.append({
         "name": name,
         "lat": lat,
         "lon": lon,
@@ -40,37 +44,41 @@ for i in range(int(num_clients)):
         "to": available_to
     })
 
-if st.button("Generate Suggestion"):
+if st.button("Generate Optimized Schedule"):
 
     start = (start_lat, start_lon)
-    current_time = 9  # Start at 9 AM
-    speed = 35  # km per hour average speed
+    current_time = 9
+    speed = 35
 
-    # Simple traffic logic
     hour = datetime.datetime.now().hour
     if 8 <= hour <= 10 or 17 <= hour <= 19:
         traffic_multiplier = 1.3
     else:
         traffic_multiplier = 1.0
 
-    # Sort by nearest
-    clients.sort(key=lambda c: geodesic(start, (c["lat"], c["lon"])).km)
+    # Sort nearest first
+    patients.sort(key=lambda c: geodesic(start, (c["lat"], c["lon"])).km)
 
-    schedule_text = "Suggested Visit Plan:\n\n"
+    schedule = []
 
-    for client in clients:
-        distance_km = geodesic(start, (client["lat"], client["lon"])).km
+    for p in patients:
+        distance_km = geodesic(start, (p["lat"], p["lon"])).km
         travel_minutes = (distance_km / speed) * 60 * traffic_multiplier
         arrival_time = current_time + travel_minutes / 60
 
-        # Respect availability
-        if arrival_time < client["from"]:
-            arrival_time = client["from"]
+        if arrival_time < p["from"]:
+            arrival_time = p["from"]
 
-        if arrival_time <= client["to"]:
-            schedule_text += f"{client['name']} at {round(arrival_time,2)} hrs\n"
+        if arrival_time <= p["to"]:
+            schedule.append((p["name"], round(arrival_time,2)))
             current_time = arrival_time + 1
-            start = (client["lat"], client["lon"])
+            start = (p["lat"], p["lon"])
 
-    st.success("Schedule Generated")
-    st.text(schedule_text)
+    message = "Optimized Visit Plan:\n\n"
+    for s in schedule:
+        message += f"{s[0]} at {s[1]} hrs\n"
+
+    st.success("Schedule Generated!")
+    st.text(message)
+
+!streamlit run app.py
