@@ -7,7 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/19e8BHXBQCD1pU4Me4wGJRiJFHlrGL5vW
 """
 
-!pip install streamlit geopy
 import streamlit as st
 from geopy.distance import geodesic
 import datetime
