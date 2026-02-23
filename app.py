@@ -11,17 +11,22 @@ import streamlit as st
 from geopy.distance import geodesic
 import datetime
 import urllib.parse
-import smtplib
-from email.mime.text import MIMEText
+
+st.set_page_config(page_title="Smart Visit Optimizer", layout="centered")
 
 st.title("🚑 Smart Patient Visit Optimizer")
 
-# Doctor start location
+# -----------------------------
+# Doctor Start Location
+# -----------------------------
 st.header("Doctor Start Location")
-start_lat = st.number_input("Start Latitude", value=9.9200)
-start_lon = st.number_input("Start Longitude", value=78.1200)
 
-# Add patients
+start_lat = st.number_input("Start Latitude", value=9.9200, format="%.6f")
+start_lon = st.number_input("Start Longitude", value=78.1200, format="%.6f")
+
+# -----------------------------
+# Add Patients
+# -----------------------------
 st.header("Add Patients")
 
 num_patients = st.number_input("Number of Patients", min_value=1, step=1)
@@ -30,25 +35,34 @@ patients = []
 
 for i in range(int(num_patients)):
     st.subheader(f"Patient {i+1}")
-    name = st.text_input(f"Name {i}", key=f"name{i}")
-    lat = st.number_input(f"Latitude {i}", key=f"lat{i}")
-    lon = st.number_input(f"Longitude {i}", key=f"lon{i}")
-    available_from = st.number_input(f"Available From (24h)", key=f"from{i}")
-    available_to = st.number_input(f"Available To (24h)", key=f"to{i}")
 
-    patients.append({
-        "name": name,
-        "lat": lat,
-        "lon": lon,
-        "from": available_from,
-        "to": available_to
-    })
+    name = st.text_input("Name", key=f"name{i}")
+    lat = st.number_input("Latitude", key=f"lat{i}", format="%.6f")
+    lon = st.number_input("Longitude", key=f"lon{i}", format="%.6f")
+    available_from = st.number_input("Available From (24h)", min_value=0, max_value=23, key=f"from{i}")
+    available_to = st.number_input("Available To (24h)", min_value=0, max_value=23, key=f"to{i}")
 
+    if name and lat != 0 and lon != 0 and available_to > available_from:
+        patients.append({
+            "name": name,
+            "lat": lat,
+            "lon": lon,
+            "from": available_from,
+            "to": available_to
+        })
+
+# -----------------------------
+# Generate Schedule
+# -----------------------------
 if st.button("Generate Optimized Schedule"):
 
+    if not patients:
+        st.warning("Please enter valid patient details.")
+        st.stop()
+
     start = (start_lat, start_lon)
-    current_time = 9
-    speed = 35
+    current_time = 9  # Start at 9 AM
+    speed = 35  # km/h average
 
     hour = datetime.datetime.now().hour
     if 8 <= hour <= 10 or 17 <= hour <= 19:
@@ -56,27 +70,60 @@ if st.button("Generate Optimized Schedule"):
     else:
         traffic_multiplier = 1.0
 
-    # Sort nearest first
-    patients.sort(key=lambda c: geodesic(start, (c["lat"], c["lon"])).km)
-
     schedule = []
+    remaining = patients.copy()
 
-    for p in patients:
-        distance_km = geodesic(start, (p["lat"], p["lon"])).km
+    while remaining:
+        nearest = min(
+            remaining,
+            key=lambda c: geodesic(start, (c["lat"], c["lon"])).km
+        )
+        remaining.remove(nearest)
+
+        distance_km = geodesic(start, (nearest["lat"], nearest["lon"])).km
         travel_minutes = (distance_km / speed) * 60 * traffic_multiplier
         arrival_time = current_time + travel_minutes / 60
 
-        if arrival_time < p["from"]:
-            arrival_time = p["from"]
+        if arrival_time < nearest["from"]:
+            arrival_time = nearest["from"]
 
-        if arrival_time <= p["to"]:
-            schedule.append((p["name"], round(arrival_time,2)))
+        if arrival_time <= nearest["to"]:
+            schedule.append({
+                "name": nearest["name"],
+                "arrival": arrival_time,
+                "distance": round(distance_km, 2),
+                "lat": nearest["lat"],
+                "lon": nearest["lon"]
+            })
+
             current_time = arrival_time + 1
-            start = (p["lat"], p["lon"])
+            start = (nearest["lat"], nearest["lon"])
 
-    message = "Optimized Visit Plan:\n\n"
-    for s in schedule:
-        message += f"{s[0]} at {s[1]} hrs\n"
+    # -----------------------------
+    # Display Results
+    # -----------------------------
+    if not schedule:
+        st.error("No possible optimized schedule found.")
+    else:
+        st.success("Optimized Schedule Generated!")
 
-    st.success("Schedule Generated!")
-    st.text(message)
+        message = "Optimized Visit Plan:\n\n"
+
+        for visit in schedule:
+            hours = int(visit["arrival"])
+            minutes = int((visit["arrival"] - hours) * 60)
+
+            time_formatted = datetime.time(hours, minutes).strftime("%I:%M %p")
+
+            maps_link = f"https://www.google.com/maps/search/?api=1&query={visit['lat']},{visit['lon']}"
+
+            st.markdown(f"""
+            **👤 {visit['name']}**
+            - ⏰ Arrival: {time_formatted}
+            - 📍 Distance: {visit['distance']} km
+            - 🗺️ [Open in Google Maps]({maps_link})
+            """)
+
+            message += f"{visit['name']} at {time_formatted}\n"
+
+        st.text_area("Copy Schedule (For WhatsApp/Email)", message, height=150)
