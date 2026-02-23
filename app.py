@@ -7,139 +7,33 @@ Original file is located at
     https://colab.research.google.com/drive/19e8BHXBQCD1pU4Me4wGJRiJFHlrGL5vW
 """
 
-# Commented out IPython magic to ensure Python compatibility.
-# %%writefile app.py
-# import streamlit as st
-# from geopy.distance import geodesic
-# import datetime
-# import urllib.parse
-# import smtplib
-# from email.mime.text import MIMEText
-# 
-# st.title("🚑 Smart Patient Visit Optimizer")
-# 
-# # Doctor start location
-# st.header("Doctor Start Location")
-# start_lat = st.number_input("Start Latitude", value=9.9200)
-# start_lon = st.number_input("Start Longitude", value=78.1200)
-# 
-# # Add patients
-# st.header("Add Patients")
-# 
-# num_patients = st.number_input("Number of Patients", min_value=1, step=1)
-# 
-# patients = []
-# 
-# for i in range(int(num_patients)):
-#     st.subheader(f"Patient {i+1}")
-#     name = st.text_input(f"Name {i}", key=f"name{i}")
-#     lat = st.number_input(f"Latitude {i}", key=f"lat{i}")
-#     lon = st.number_input(f"Longitude {i}", key=f"lon{i}")
-#     available_from = st.number_input(f"Available From (24h)", key=f"from{i}")
-#     available_to = st.number_input(f"Available To (24h)", key=f"to{i}")
-# 
-#     patients.append({
-#         "name": name,
-#         "lat": lat,
-#         "lon": lon,
-#         "from": available_from,
-#         "to": available_to
-#     })
-# 
-# if st.button("Generate Optimized Schedule"):
-# 
-#     start = (start_lat, start_lon)
-#     current_time = 9
-#     speed = 35
-# 
-#     hour = datetime.datetime.now().hour
-#     if 8 <= hour <= 10 or 17 <= hour <= 19:
-#         traffic_multiplier = 1.3
-#     else:
-#         traffic_multiplier = 1.0
-# 
-#     # Sort nearest first
-#     patients.sort(key=lambda c: geodesic(start, (c["lat"], c["lon"]))).km)
-# 
-#     schedule = []
-# 
-#     for p in patients:
-#         distance_km = geodesic(start, (p["lat"], p["lon"]))).km
-#         travel_minutes = (distance_km / speed) * 60 * traffic_multiplier
-#         arrival_time = current_time + travel_minutes / 60
-# 
-#         if arrival_time < p["from"]:
-#             arrival_time = p["from"]
-# 
-#         if arrival_time <= p["to"]:
-#             schedule.append((p["name"], round(arrival_time,2)))
-#             current_time = arrival_time + 1
-#             start = (p["lat"], p["lon"])
-# 
-#     message = "Optimized Visit Plan:\n\n"
-#     for s in schedule:
-#         message += f"{s[0]} at {s[1]} hrs\n"
-# 
-#     st.success("Schedule Generated!")
-#     st.text(message)
-# 
-#     # WhatsApp Link
-#     doctor_phone = st.text_input("Doctor WhatsApp Number (with country code)")
-#     if doctor_phone:
-#         encoded_message = urllib.parse.quote(message)
-#         whatsapp_link = f"https://wa.me/{doctor_phone}?text={encoded_message}"
-#         st.markdown(f"[📲 Send via WhatsApp]({whatsapp_link})")
-# 
-#     # Email Option
-#     st.header("Send Email")
-#     sender = st.text_input("Your Gmail")
-#     password = st.text_input("App Password", type="password")
-#     receiver = st.text_input("Doctor Email")
-# 
-#     if st.button("Send Email"):
-#         msg = MIMEText(message)
-#         msg["Subject"] = "Optimized Patient Visit Schedule"
-#         msg["From"] = sender
-#         msg["To"] = receiver
-# 
-#         server = smtplib.SMTP("smtp.gmail.com", 587)
-#         server.starttls()
-#         server.login(sender, password)
-#         server.sendmail(sender, receiver, msg.as_string())
-#         server.quit()
-# 
-#         st.success("Email Sent Successfully!")
-
+!pip install streamlit geopy
 import streamlit as st
 from geopy.distance import geodesic
 import datetime
-import urllib.parse
-import smtplib
-from email.mime.text import MIMEText
 
-st.title("🚑 Smart Patient Visit Optimizer")
+st.title("Smart Client Visit Optimizer")
 
-# Doctor start location
-st.header("Doctor Start Location")
+# Start Location
+st.header("Start Location")
 start_lat = st.number_input("Start Latitude", value=9.9200)
 start_lon = st.number_input("Start Longitude", value=78.1200)
 
-# Add patients
-st.header("Add Patients")
+# Clients
+st.header("Client Details")
+num_clients = st.number_input("Number of Clients", min_value=1, step=1)
 
-num_patients = st.number_input("Number of Patients", min_value=1, step=1)
+clients = []
 
-patients = []
-
-for i in range(int(num_patients)):
-    st.subheader(f"Patient {i+1}")
+for i in range(int(num_clients)):
+    st.subheader(f"Client {i+1}")
     name = st.text_input(f"Name {i}", key=f"name{i}")
     lat = st.number_input(f"Latitude {i}", key=f"lat{i}")
     lon = st.number_input(f"Longitude {i}", key=f"lon{i}")
     available_from = st.number_input(f"Available From (24h)", key=f"from{i}")
     available_to = st.number_input(f"Available To (24h)", key=f"to{i}")
 
-    patients.append({
+    clients.append({
         "name": name,
         "lat": lat,
         "lon": lon,
@@ -147,12 +41,13 @@ for i in range(int(num_patients)):
         "to": available_to
     })
 
-if st.button("Generate Optimized Schedule"):
+if st.button("Generate Suggestion"):
 
     start = (start_lat, start_lon)
-    current_time = 9
-    speed = 35
+    current_time = 9   # Start at 9 AM
+    speed = 35         # km/h average speed
 
+    # Traffic logic (free simulation)
     hour = datetime.datetime.now().hour
     if 8 <= hour <= 10 or 17 <= hour <= 19:
         traffic_multiplier = 1.3
@@ -160,53 +55,24 @@ if st.button("Generate Optimized Schedule"):
         traffic_multiplier = 1.0
 
     # Sort nearest first
-    patients.sort(key=lambda c: geodesic(start, (c["lat"], c["lon"])).km)
+    clients.sort(key=lambda c: geodesic(start, (c["lat"], c["lon"])).km)
 
     schedule = []
 
-    for p in patients:
-        distance_km = geodesic(start, (p["lat"], p["lon"])).km
+    for client in clients:
+        distance_km = geodesic(start, (client["lat"], client["lon"])).km
         travel_minutes = (distance_km / speed) * 60 * traffic_multiplier
         arrival_time = current_time + travel_minutes / 60
 
-        if arrival_time < p["from"]:
-            arrival_time = p["from"]
+        # Respect availability
+        if arrival_time < client["from"]:
+            arrival_time = client["from"]
 
-        if arrival_time <= p["to"]:
-            schedule.append((p["name"], round(arrival_time,2)))
-            current_time = arrival_time + 1
-            start = (p["lat"], p["lon"])
+        if arrival_time <= client["to"]:
+            schedule.append((client["name"], round(arrival_time,2)))
+            current_time = arrival_time + 1   # Assume 1 hour visit
+            start = (client["lat"], client["lon"])
 
-    message = "Optimized Visit Plan:\n\n"
-    for s in schedule:
-        message += f"{s[0]} at {s[1]} hrs\n"
-
-    st.success("Schedule Generated!")
-    st.text(message)
-
-    # WhatsApp Link
-    doctor_phone = st.text_input("Doctor WhatsApp Number (with country code)")
-    if doctor_phone:
-        encoded_message = urllib.parse.quote(message)
-        whatsapp_link = f"https://wa.me/{doctor_phone}?text={encoded_message}"
-        st.markdown(f"[📲 Send via WhatsApp]({whatsapp_link})")
-
-    # Email Option
-    st.header("Send Email")
-    sender = st.text_input("Your Gmail")
-    password = st.text_input("App Password", type="password")
-    receiver = st.text_input("Doctor Email")
-
-    if st.button("Send Email"):
-        msg = MIMEText(message)
-        msg["Subject"] = "Optimized Patient Visit Schedule"
-        msg["From"] = sender
-        msg["To"] = receiver
-
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(sender, password)
-        server.sendmail(sender, receiver, msg.as_string())
-        server.quit()
-
-        st.success("Email Sent Successfully!")
+    st.success("Suggested Visit Plan")
+    for item in schedule:
+        st.write(f"{item[0]} at {item[1]} hrs")
