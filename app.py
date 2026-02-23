@@ -13,24 +13,24 @@ import datetime
 
 st.title("Smart Client Visit Optimizer")
 
-# Start Location
-st.header("Start Location")
-start_lat = st.number_input("Start Latitude", value=9.9200)
-start_lon = st.number_input("Start Longitude", value=78.1200)
+st.write("Enter doctor start location and client details below.")
 
-# Clients
-st.header("Client Details")
+# Doctor start location
+start_lat = st.number_input("Doctor Start Latitude", value=9.9200)
+start_lon = st.number_input("Doctor Start Longitude", value=78.1200)
+
+# Number of clients
 num_clients = st.number_input("Number of Clients", min_value=1, step=1)
 
 clients = []
 
 for i in range(int(num_clients)):
     st.subheader(f"Client {i+1}")
-    name = st.text_input(f"Name {i}", key=f"name{i}")
+    name = st.text_input(f"Client Name {i}", key=f"name{i}")
     lat = st.number_input(f"Latitude {i}", key=f"lat{i}")
     lon = st.number_input(f"Longitude {i}", key=f"lon{i}")
-    available_from = st.number_input(f"Available From (24h)", key=f"from{i}")
-    available_to = st.number_input(f"Available To (24h)", key=f"to{i}")
+    available_from = st.number_input(f"Available From (24h format)", key=f"from{i}")
+    available_to = st.number_input(f"Available To (24h format)", key=f"to{i}")
 
     clients.append({
         "name": name,
@@ -43,20 +43,20 @@ for i in range(int(num_clients)):
 if st.button("Generate Suggestion"):
 
     start = (start_lat, start_lon)
-    current_time = 9   # Start at 9 AM
-    speed = 35         # km/h average speed
+    current_time = 9  # Start at 9 AM
+    speed = 35  # km per hour average speed
 
-    # Traffic logic (free simulation)
+    # Simple traffic logic
     hour = datetime.datetime.now().hour
     if 8 <= hour <= 10 or 17 <= hour <= 19:
         traffic_multiplier = 1.3
     else:
         traffic_multiplier = 1.0
 
-    # Sort nearest first
+    # Sort by nearest
     clients.sort(key=lambda c: geodesic(start, (c["lat"], c["lon"])).km)
 
-    schedule = []
+    schedule_text = "Suggested Visit Plan:\n\n"
 
     for client in clients:
         distance_km = geodesic(start, (client["lat"], client["lon"])).km
@@ -68,10 +68,9 @@ if st.button("Generate Suggestion"):
             arrival_time = client["from"]
 
         if arrival_time <= client["to"]:
-            schedule.append((client["name"], round(arrival_time,2)))
-            current_time = arrival_time + 1   # Assume 1 hour visit
+            schedule_text += f"{client['name']} at {round(arrival_time,2)} hrs\n"
+            current_time = arrival_time + 1
             start = (client["lat"], client["lon"])
 
-    st.success("Suggested Visit Plan")
-    for item in schedule:
-        st.write(f"{item[0]} at {item[1]} hrs")
+    st.success("Schedule Generated")
+    st.text(schedule_text)
