@@ -80,5 +80,3 @@ if st.button("Generate Optimized Schedule"):
 
     st.success("Schedule Generated!")
     st.text(message)
-
-!streamlit run app.py
